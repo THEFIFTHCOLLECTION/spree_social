@@ -29,18 +29,24 @@ class Spree::OmniauthCallbacksController < Devise::OmniauthCallbacksController
           flash[:notice] = t("devise.sessions.signed_in")
           redirect_back_or_default(account_url)
         else
-          user = Spree::User.find_by_email(auth_hash['info']['email']) || Spree::User.new
-          user.apply_omniauth(auth_hash)
-          if user.save
-            flash[:notice] = I18n.t("devise.omniauth_callbacks.success", :kind => auth_hash['provider'])
-            associate_order_with_user(authentication)
-            sign_in_and_redirect :spree_user, user
+          if auth_hash['info']['email'].blank? || auth_hash['info']['email'].nil?
+            @auth_hash = auth_hash
+            render 'spree/user_registrations/no_email_callback'
           else
-            session[:omniauth] = auth_hash.except('extra')
-            flash[:notice] = Spree.t(:one_more_step, :kind => auth_hash['provider'].capitalize)
-            redirect_to new_spree_user_registration_url
-            return
+            user = Spree::User.find_by_email(auth_hash['info']['email']) || Spree::User.new
+            user.apply_omniauth(auth_hash)
+            if user.save
+              flash[:notice] = I18n.t("devise.omniauth_callbacks.success", :kind => auth_hash['provider'])
+              associate_order_with_user(authentication)
+              sign_in_and_redirect :spree_user, user
+            else
+              session[:omniauth] = auth_hash.except('extra')
+              flash[:notice] = Spree.t(:one_more_step, :kind => auth_hash['provider'].capitalize)
+              redirect_to new_spree_user_registration_url
+              return
+            end
           end
+
         end
       end
       FUNCTION_DEFS
@@ -70,5 +76,8 @@ class Spree::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       current_order.associate_user!(user)
       session[:guest_token] = nil
     end
+  end
+
+  def no_email_callback
   end
 end
